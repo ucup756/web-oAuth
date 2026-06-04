@@ -77,6 +77,7 @@ export default function Login() {
         <p className="login-note">
           Kami hanya menggunakan akun Google kamu untuk autentikasi.
           Data kamu aman.
+          Created by Ahmad Yusuf Kurniawan
         </p>
       </div>
     </div>

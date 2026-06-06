@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CHAR_SETS,
   imageToAscii,
+  copyAsciiToClipboard,
   asciiToCanvas,
   downloadTxt,
   downloadPng,
@@ -125,9 +126,11 @@ export default function Dashboard() {
 
   const handleCopy = async () => {
     if (!result) return;
-    await navigator.clipboard.writeText(result.text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyAsciiToClipboard(result.text);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleDownloadTxt = () => {

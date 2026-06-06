@@ -23,7 +23,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── LAYOUT ── */
+/* â”€â”€ LAYOUT â”€â”€ */
 .login-wrapper {
   min-height: 100vh;
   display: grid;
@@ -32,7 +32,7 @@ body {
   background: var(--bg);
 }
 
-/* ── LEFT PANEL ── */
+/* â”€â”€ LEFT PANEL â”€â”€ */
 .login-left {
   position: relative;
   background: linear-gradient(155deg, var(--p600) 0%, var(--p900) 100%);
@@ -197,7 +197,7 @@ body {
   color: #b9f0c8;
 }
 
-/* ── RIGHT PANEL ── */
+/* â”€â”€ RIGHT PANEL â”€â”€ */
 .login-right {
   display: flex;
   align-items: center;
@@ -439,10 +439,10 @@ body {
   text-align: center;
 }
 
-/* ── RESPONSIVE ── */
+/* â”€â”€ RESPONSIVE â”€â”€ */
 @media (max-width: 768px) {
   .login-wrapper { grid-template-columns: 1fr; }
   .login-left    { display: none; }
   .login-right   { padding: 40px 24px; align-items: flex-start; padding-top: 64px; }
   .login-card    { max-width: 100%; }
-}
+  }

@@ -1,14 +1,14 @@
 const CHAR_SETS = {
   standard: '@#S%?*+;:,. ',
   detailed: '@#&$%?!;:~-,. ',
-  block:    '█▓▒░ ',
+  block:    'â–ˆâ–“â–’â–‘ ',
   binary:   '10 ',
   minimal:  '@+. ',
 };
 
 /**
  * Hitung aspect ratio karakter monospace di browser.
- * Rata-rata charHeight/charWidth ≈ 1.6–2.0 tergantung font.
+ * Rata-rata charHeight/charWidth â‰ˆ 1.6â€“2.0 tergantung font.
  * Kita ukur langsung pakai canvas supaya akurat.
  */
 function getCharAspectRatio(fontSize = 10, fontFamily = 'monospace') {
@@ -17,7 +17,7 @@ function getCharAspectRatio(fontSize = 10, fontFamily = 'monospace') {
   ctx.font     = `${fontSize}px ${fontFamily}`;
   const charW  = ctx.measureText('W').width;
   const charH  = fontSize * 1.2; // line-height 1.2
-  return charH / charW; // biasanya ~1.8–2.0
+  return charH / charW; // biasanya ~1.8â€“2.0
 }
 
 /**
@@ -25,7 +25,7 @@ function getCharAspectRatio(fontSize = 10, fontFamily = 'monospace') {
  * @param {string} imageSrc  - data URL atau URL gambar
  * @param {object} options
  *   width      {number}  kolom karakter (default 100)
- *   contrast   {number}  faktor kontras 0.5–2.5 (default 1.1)
+ *   contrast   {number}  faktor kontras 0.5â€“2.5 (default 1.1)
  *   invert     {boolean} balik gelap-terang (default false)
  *   charSet    {string}  key dari CHAR_SETS (default 'standard')
  *   colorMode  {string}  'none'|'white'|'purple'|'color' (default 'none')
@@ -44,7 +44,7 @@ function imageToAscii(imageSrc, options = {}) {
     img.crossOrigin  = 'anonymous';
 
     img.onload = () => {
-      // ── Hitung dimensi dengan aspect ratio correction ──
+      // â”€â”€ Hitung dimensi dengan aspect ratio correction â”€â”€
       const aspectRatio    = getCharAspectRatio();   // charH / charW
       const imgAspect      = img.height / img.width; // tinggi / lebar gambar
       const cols           = width;
@@ -165,14 +165,14 @@ function asciiToCanvas(lines, colorData = [], options = {}) {
  * copy sebagai HTML, dan plain text fallback tetap ada.
  * Di WhatsApp desktop hasil lebih rapi karena menghormati
  * spasi. Di WhatsApp mobile hasilnya memang terbatas karena
- * app tidak mendukung monospace — solusi terbaik tetap PNG.
+ * app tidak mendukung monospace â€” solusi terbaik tetap PNG.
  */
 async function copyAsciiToClipboard(text) {
   // Bungkus dengan tag <pre> dan font monospace
   const html = `<pre style="font-family:monospace;font-size:10px;line-height:1.1;letter-spacing:0;">${text}</pre>`;
 
   try {
-    // Clipboard API modern — support HTML + plain text sekaligus
+    // Clipboard API modern â€” support HTML + plain text sekaligus
     const htmlBlob  = new Blob([html], { type: 'text/html' });
     const textBlob  = new Blob([text], { type: 'text/plain' });
     await navigator.clipboard.write([

@@ -2,46 +2,73 @@ const CHAR_SETS = {
   standard: '@#S%?*+;:,. ',
   detailed: '@#&$%?!;:~-,. ',
   block:    '█▓▒░ ',
-  binary:   '1 0',
+  binary:   '10 ',
   minimal:  '@+. ',
 };
 
+/**
+ * Hitung aspect ratio karakter monospace di browser.
+ * Rata-rata charHeight/charWidth ≈ 1.6–2.0 tergantung font.
+ * Kita ukur langsung pakai canvas supaya akurat.
+ */
+function getCharAspectRatio(fontSize = 10, fontFamily = 'monospace') {
+  const canvas = document.createElement('canvas');
+  const ctx    = canvas.getContext('2d');
+  ctx.font     = `${fontSize}px ${fontFamily}`;
+  const charW  = ctx.measureText('W').width;
+  const charH  = fontSize * 1.2; // line-height 1.2
+  return charH / charW; // biasanya ~1.8–2.0
+}
+
+/**
+ * Konversi gambar ke ASCII art.
+ * @param {string} imageSrc  - data URL atau URL gambar
+ * @param {object} options
+ *   width      {number}  kolom karakter (default 100)
+ *   contrast   {number}  faktor kontras 0.5–2.5 (default 1.1)
+ *   invert     {boolean} balik gelap-terang (default false)
+ *   charSet    {string}  key dari CHAR_SETS (default 'standard')
+ *   colorMode  {string}  'none'|'white'|'purple'|'color' (default 'none')
+ */
 function imageToAscii(imageSrc, options = {}) {
   return new Promise((resolve, reject) => {
     const {
       width      = 100,
-      contrast   = 1.0,
+      contrast   = 1.1,
       invert     = false,
       charSet    = 'standard',
       colorMode  = 'none',
     } = options;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+    const img        = new Image();
+    img.crossOrigin  = 'anonymous';
 
     img.onload = () => {
-      const canvas  = document.createElement('canvas');
-      const aspect  = img.height / img.width;
-      const cols    = width;
-      const rows    = Math.floor(cols * aspect * 0.45);
+      // ── Hitung dimensi dengan aspect ratio correction ──
+      const aspectRatio    = getCharAspectRatio();   // charH / charW
+      const imgAspect      = img.height / img.width; // tinggi / lebar gambar
+      const cols           = width;
+      // Bagi dengan aspectRatio supaya hasil tidak memanjang
+      const rows           = Math.floor(cols * imgAspect / aspectRatio);
 
-      canvas.width  = cols;
-      canvas.height = rows;
+      const canvas         = document.createElement('canvas');
+      canvas.width         = cols;
+      canvas.height        = rows;
 
-      const ctx = canvas.getContext('2d');
+      const ctx            = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, cols, rows);
 
-      const imageData = ctx.getImageData(0, 0, cols, rows);
-      const pixels    = imageData.data;
-      const chars     = CHAR_SETS[charSet] ?? CHAR_SETS.standard;
-      const len       = chars.length - 1;
+      const imageData      = ctx.getImageData(0, 0, cols, rows);
+      const pixels         = imageData.data;
+      const chars          = CHAR_SETS[charSet] ?? CHAR_SETS.standard;
+      const maxIndex       = chars.length - 1;
 
-      let asciiLines  = [];
-      let colorData   = [];
+      const asciiLines     = [];
+      const colorData      = [];
 
       for (let y = 0; y < rows; y++) {
         let line      = '';
-        let lineColor = [];
+        const lineClr = [];
 
         for (let x = 0; x < cols; x++) {
           const idx = (y * cols + x) * 4;
@@ -49,43 +76,48 @@ function imageToAscii(imageSrc, options = {}) {
           const g   = pixels[idx + 1];
           const b   = pixels[idx + 2];
 
+          // Luminance perceptual
           let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-          brightness = Math.min(1, Math.max(0, (brightness - 0.5) * contrast + 0.5));
+          // Terapkan kontras
+          brightness = Math.min(1, Math.max(0,
+            (brightness - 0.5) * contrast + 0.5
+          ));
 
           if (invert) brightness = 1 - brightness;
 
-          const charIndex = Math.floor(brightness * len);
+          const charIndex = Math.floor(brightness * maxIndex);
           line += chars[charIndex];
 
-          if (colorMode === 'color') {
-            lineColor.push({ r, g, b });
-          }
+          if (colorMode === 'color') lineClr.push({ r, g, b });
         }
 
         asciiLines.push(line);
-        if (colorMode === 'color') colorData.push(lineColor);
+        if (colorMode === 'color') colorData.push(lineClr);
       }
 
       resolve({
         text:      asciiLines.join('\n'),
         lines:     asciiLines,
-        colorData: colorData,
+        colorData,
         cols,
         rows,
       });
     };
 
     img.onerror = () => reject(new Error('Gagal memuat gambar.'));
-    img.src = imageSrc;
+    img.src     = imageSrc;
   });
 }
 
+/**
+ * Render ASCII art ke Canvas (untuk download PNG).
+ */
 function asciiToCanvas(lines, colorData = [], options = {}) {
   const {
-    fontSize   = 6,
+    fontSize   = 7,
     fontFamily = 'monospace',
-    bgColor    = '#0f0f0f',
+    bgColor    = '#0f0a1e',
     fgColor    = '#a3e635',
     colorMode  = 'none',
   } = options;
@@ -125,6 +157,43 @@ function asciiToCanvas(lines, colorData = [], options = {}) {
   return canvas;
 }
 
+/**
+ * Copy ke clipboard dalam format yang kompatibel dengan
+ * WhatsApp, Telegram, Notes, dll.
+ *
+ * Trik: gunakan <pre> agar browser menjaga whitespace saat
+ * copy sebagai HTML, dan plain text fallback tetap ada.
+ * Di WhatsApp desktop hasil lebih rapi karena menghormati
+ * spasi. Di WhatsApp mobile hasilnya memang terbatas karena
+ * app tidak mendukung monospace — solusi terbaik tetap PNG.
+ */
+async function copyAsciiToClipboard(text) {
+  // Bungkus dengan tag <pre> dan font monospace
+  const html = `<pre style="font-family:monospace;font-size:10px;line-height:1.1;letter-spacing:0;">${text}</pre>`;
+
+  try {
+    // Clipboard API modern — support HTML + plain text sekaligus
+    const htmlBlob  = new Blob([html], { type: 'text/html' });
+    const textBlob  = new Blob([text], { type: 'text/plain' });
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html':  htmlBlob,
+        'text/plain': textBlob,
+      }),
+    ]);
+    return true;
+  } catch {
+    // Fallback ke plain text jika ClipboardItem tidak tersedia
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** Download sebagai file .txt */
 function downloadTxt(text, filename = 'ascii-art.txt') {
   const blob = new Blob([text], { type: 'text/plain' });
   const url  = URL.createObjectURL(blob);
@@ -135,22 +204,24 @@ function downloadTxt(text, filename = 'ascii-art.txt') {
   URL.revokeObjectURL(url);
 }
 
+/** Download Canvas sebagai .png */
 function downloadPng(canvas, filename = 'ascii-art.png') {
   canvas.toBlob((blob) => {
-    const url = URL.createObjectURL(blob);
-    const a   = document.createElement('a');
-    a.href    = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   });
 }
 
+/** Konversi File object ke data URL */
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
-    const reader  = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = () => reject(new Error('Gagal membaca file.'));
+    const reader     = new FileReader();
+    reader.onload    = (e) => resolve(e.target.result);
+    reader.onerror   = () => reject(new Error('Gagal membaca file.'));
     reader.readAsDataURL(file);
   });
 }
@@ -159,6 +230,7 @@ export {
   CHAR_SETS,
   imageToAscii,
   asciiToCanvas,
+  copyAsciiToClipboard,
   downloadTxt,
   downloadPng,
   fileToDataUrl,
